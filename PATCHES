@@ -1,0 +1,16 @@
+applied:
+http://code.google.com/p/pyffmpeg/issues/detail?id=1&can=1
+
+todo:
+MACOSX 10.5: http://code.google.com/p/pyffmpeg/issues/detail?id=3&can=1
+ffmpeg rev13712: http://code.google.com/p/pyffmpeg/issues/detail?id=8&can=1
+
+packages to install:
+=python-dev
+=libavcodec-dev
+=libavutil-dev
+=libavformat-dev
+=cython
+They are preceeded by an = to make them easy to extract. The following
+command should ensure that you have the packages you need.
+# sudo apt-get install $(sed -n -e 's/^=//p' PATCHES)
