@@ -9,271 +9,51 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307	USA
 
-import Image
-
-ctypedef signed long long int64_t
-
-cdef enum:
-	SEEK_SET = 0
-	SEEK_CUR = 1
-	SEEK_END = 2
+try:
+	import Image
+	_HAS_PIL = True
+except ImportError:
+	_HAS_PIL = False
 	
+try:
+	cimport numpy
+	import numpy
+	_HAS_NUMPY = True
+except ImportError:
+	_HAS_NUMPY = False
+
+try:
+	import cairo
+	_HAS_CAIRO = True
+except:
+	_HAS_CAIRO = False
+	
+if not (_HAS_PIL or _HAS_CAIRO or _HAS_NUMPY):
+	raise ImportError, "No Image library available. One of PIL, Cairo, or numpy required"
+	
+ctypedef unsigned char uint8_t
+
 cdef extern from "Python.h":
-	ctypedef int size_t
-	object PyBuffer_FromMemory(	void *ptr, int size)
-	object PyString_FromStringAndSize(char *s, int len)
-	void* PyMem_Malloc( size_t n)
-	void PyMem_Free( void *p)
-
-cdef extern from "mathematics.h":
-	int64_t av_rescale(int64_t a, int64_t b, int64_t c)
+	ctypedef int Py_ssize_t
 	
-cdef extern from "avutil.h":
-	cdef enum PixelFormat:
-		PIX_FMT_NONE= -1,
-		PIX_FMT_YUV420P,   #< Planar YUV 4:2:0 (1 Cr & Cb sample per 2x2 Y samples)
-		PIX_FMT_YUV422,    #< Packed pixel, Y0 Cb Y1 Cr
-		PIX_FMT_RGB24,     #< Packed pixel, 3 bytes per pixel, RGBRGB...
-		PIX_FMT_BGR24,     #< Packed pixel, 3 bytes per pixel, BGRBGR...
-		PIX_FMT_YUV422P,   #< Planar YUV 4:2:2 (1 Cr & Cb sample per 2x1 Y samples)
-		PIX_FMT_YUV444P,   #< Planar YUV 4:4:4 (1 Cr & Cb sample per 1x1 Y samples)
-		PIX_FMT_RGBA32,    #< Packed pixel, 4 bytes per pixel, BGRABGRA..., stored in cpu endianness
-		PIX_FMT_YUV410P,   #< Planar YUV 4:1:0 (1 Cr & Cb sample per 4x4 Y samples)
-		PIX_FMT_YUV411P,   #< Planar YUV 4:1:1 (1 Cr & Cb sample per 4x1 Y samples)
-		PIX_FMT_RGB565,    #< always stored in cpu endianness
-		PIX_FMT_RGB555,    #< always stored in cpu endianness, most significant bit to 1
-		PIX_FMT_GRAY8,
-		PIX_FMT_MONOWHITE, #< 0 is white
-		PIX_FMT_MONOBLACK, #< 0 is black
-		PIX_FMT_PAL8,      #< 8 bit with RGBA palette
-		PIX_FMT_YUVJ420P,  #< Planar YUV 4:2:0 full scale (jpeg)
-		PIX_FMT_YUVJ422P,  #< Planar YUV 4:2:2 full scale (jpeg)
-		PIX_FMT_YUVJ444P,  #< Planar YUV 4:4:4 full scale (jpeg)
-		PIX_FMT_XVMC_MPEG2_MC,#< XVideo Motion Acceleration via common packet passing(xvmc_render.h)
-		PIX_FMT_XVMC_MPEG2_IDCT,
-		PIX_FMT_UYVY422,   #< Packed pixel, Cb Y0 Cr Y1
-		PIX_FMT_UYVY411,   #< Packed pixel, Cb Y0 Y1 Cr Y2 Y3
-		PIX_FMT_NB,
-
-cdef extern from "avcodec.h":
-	# use an unamed enum for defines
-	cdef enum:
-		AVSEEK_FLAG_BACKWARD = 1 #< seek backward
-		AVSEEK_FLAG_BYTE     = 2 #< seeking based on position in bytes
-		AVSEEK_FLAG_ANY      = 4 #< seek to any frame, even non keyframes
-		CODEC_CAP_TRUNCATED = 0x0008
-		CODEC_FLAG_TRUNCATED = 0x00010000 # input bitstream might be truncated at a random location instead of only at frame boundaries
-		AV_TIME_BASE = 1000000
-		FF_I_TYPE = 1 # Intra
-		FF_P_TYPE = 2 # Predicted
-		FF_B_TYPE = 3 # Bi-dir predicted
-		FF_S_TYPE = 4 # S(GMC)-VOP MPEG4
-		FF_SI_TYPE = 5
-		FF_SP_TYPE = 6
-
-		AV_NOPTS_VALUE = <int64_t>0x8000000000000000
-
-	enum AVDiscard:
-		# we leave some space between them for extensions (drop some keyframes for intra only or drop just some bidir frames)
-		AVDISCARD_NONE   = -16 # discard nothing
-		AVDISCARD_DEFAULT=   0 # discard useless packets like 0 size packets in avi
-		AVDISCARD_NONREF =   8 # discard all non reference
-		AVDISCARD_BIDIR  =  16 # discard all bidirectional frames
-		AVDISCARD_NONKEY =  32 # discard all frames except keyframes
-		AVDISCARD_ALL    =  48 # discard all
-		
-		
-	struct AVCodecContext:
-		int codec_type
-		int codec_id
-		int flags
-		int width
-		int height
-		int pix_fmt
-		int frame_number
-		int hurry_up
-		int skip_idct
-		int skip_frame
-		
-	struct AVRational:
-		int num
-		int den
-
-	enum CodecType:
-		CODEC_TYPE_UNKNOWN = -1
-		CODEC_TYPE_VIDEO = 0
-		CODEC_TYPE_AUDIO = 1
-		CODEC_TYPE_DATA = 2
-		CODEC_TYPE_SUBTITLE = 3
-
-	struct AVCodec:
-		char *name
-		int type
-		int id
-		int priv_data_size
-		int capabilities
-		AVCodec *next
-		AVRational *supported_framerates #array of supported framerates, or NULL if any, array is terminated by {0,0}
-		int *pix_fmts       #array of supported pixel formats, or NULL if unknown, array is terminanted by -1
-
-	struct AVPacket:
-		int64_t pts                            #< presentation time stamp in time_base units
-		int64_t dts                            #< decompression time stamp in time_base units
-		char *data
-		int   size
-		int   stream_index
-		int   flags
-		int   duration                      #< presentation duration in time_base units (0 if not available)
-		void  *priv
-		int64_t pos                            #< byte position in stream, -1 if unknown
-
-	struct AVFrame:
-		char *data[4]
-		int linesize[4]
-		int64_t pts
-		int pict_type
-		int key_frame
-
-	struct AVPicture:
-		pass
-	AVCodec *avcodec_find_decoder(int id)
-	int avcodec_open(AVCodecContext *avctx, AVCodec *codec)
-	int avcodec_decode_video(AVCodecContext *avctx, AVFrame *picture,
-                         int *got_picture_ptr,
-                         char *buf, int buf_size)
-	int avpicture_fill(AVPicture *picture, void *ptr,
-                   int pix_fmt, int width, int height)
-	AVFrame *avcodec_alloc_frame()
-	int avpicture_get_size(int pix_fmt, int width, int height)
-	int avpicture_layout(AVPicture* src, int pix_fmt, int width, int height,
-                     unsigned char *dest, int dest_size)
-	int img_convert(AVPicture *dst, int dst_pix_fmt,
-                AVPicture *src, int pix_fmt,
-                int width, int height)
-				
-	void avcodec_flush_buffers(AVCodecContext *avctx)
-
-
-
-cdef extern from "avformat.h":
-	struct AVFrac:
-		int64_t val, num, den
-
-	void av_register_all()
-
-	struct AVCodecParserContext:
-		pass
-
-	struct AVIndexEntry:
-		pass
-
-	struct AVStream:
-		int index    #/* stream index in AVFormatContext */
-		int id       #/* format specific stream id */
-		AVCodecContext *codec #/* codec context */
-		# real base frame rate of the stream.
-		# for example if the timebase is 1/90000 and all frames have either
-		# approximately 3600 or 1800 timer ticks then r_frame_rate will be 50/1
-		AVRational r_frame_rate
-		void *priv_data
-		# internal data used in av_find_stream_info()
-		int64_t codec_info_duration
-		int codec_info_nb_frames
-		# encoding: PTS generation when outputing stream
-		AVFrac pts
-		# this is the fundamental unit of time (in seconds) in terms
-		# of which frame timestamps are represented. for fixed-fps content,
-		# timebase should be 1/framerate and timestamp increments should be
-		# identically 1.
-		AVRational time_base
-		int pts_wrap_bits # number of bits in pts (used for wrapping control)
-		# ffmpeg.c private use
-		int stream_copy   # if TRUE, just copy stream
-		int discard       # < selects which packets can be discarded at will and dont need to be demuxed
-		# FIXME move stuff to a flags field?
-		# quality, as it has been removed from AVCodecContext and put in AVVideoFrame
-		# MN:dunno if thats the right place, for it
-		float quality
-		# decoding: position of the first frame of the component, in
-		# AV_TIME_BASE fractional seconds.
-		int64_t start_time
-		# decoding: duration of the stream, in AV_TIME_BASE fractional
-		# seconds.
-		int64_t duration
-		char language[4] # ISO 639 3-letter language code (empty string if undefined)
-		# av_read_frame() support
-		int need_parsing                  # < 1->full parsing needed, 2->only parse headers dont repack
-		AVCodecParserContext *parser
-		int64_t cur_dts
-		int last_IP_duration
-		int64_t last_IP_pts
-		# av_seek_frame() support
-		AVIndexEntry *index_entries # only used if the format does not support seeking natively
-		int nb_index_entries
-		int index_entries_allocated_size
-		int64_t nb_frames                 # < number of frames in this stream if known or 0
-
-	struct ByteIOContext:
-		pass
-
-	struct AVFormatContext:
-		int nb_streams
-		AVStream **streams
-		int64_t timestamp
-		int64_t start_time
-		AVStream *cur_st
-		AVPacket cur_pkt
-		ByteIOContext pb
-		# decoding: total file size. 0 if unknown
-		int64_t file_size
-		int64_t duration
-		# decoding: total stream bitrate in bit/s, 0 if not
-		# available. Never set it directly if the file_size and the
-		# duration are known as ffmpeg can compute it automatically. */
-		int bit_rate
-		# av_seek_frame() support
-		int64_t data_offset    # offset of the first packet
-		int index_built
-		
-
-	struct AVInputFormat:
-		pass
-
-	struct AVFormatParameters:
-		pass
-
-	int av_open_input_file(AVFormatContext **ic_ptr, char *filename,
-                       AVInputFormat *fmt,
-                       int buf_size,
-                       AVFormatParameters *ap)
-	int av_find_stream_info(AVFormatContext *ic)
-
-	void dump_format(AVFormatContext *ic,
-                 int index,
-                 char *url,
-                 int is_output)
-	void av_free_packet(AVPacket *pkt)
-	int av_read_packet(AVFormatContext *s, AVPacket *pkt)
-	int av_read_frame(AVFormatContext *s, AVPacket *pkt)
-	int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int flags)
-	int av_seek_frame_binary(AVFormatContext *s, int stream_index, int64_t target_ts, int flags)
-
-	void av_parser_close(AVCodecParserContext *s)
-
-	int av_index_search_timestamp(AVStream *st, int64_t timestamp, int flags)
-
-
-cdef extern from "avio.h":
-	int url_ferror(ByteIOContext *s)
-	int url_feof(ByteIOContext *s)
+	object PyBuffer_FromMemory(void *ptr, int size)
+	object PyBuffer_FromReadWriteMemory(void *ptr, Py_ssize_t size)
 	
+from python_string cimport PyString_FromStringAndSize
+from python_mem cimport PyMem_Malloc,PyMem_Free
+
+from ffmpeg cimport *
+#from libavcodec cimport *
+	
+# use the new swscale interface
+
 cdef __registered
 __registered = 0
 
@@ -286,6 +66,16 @@ def py_av_register_all():
 cdef AVRational AV_TIME_BASE_Q
 AV_TIME_BASE_Q.num = 1
 AV_TIME_BASE_Q.den = AV_TIME_BASE
+
+cdef enum:
+	IMAGE_LIBRARY_PIL = 0,
+	IMAGE_LIBRARY_CAIRO = 1,
+	IMAGE_LIBRARY_NUMPY = 2,
+# make the formats available to Python as well
+image_library_pil = IMAGE_LIBRARY_PIL
+image_library_cairo = IMAGE_LIBRARY_CAIRO
+image_library_numpy = IMAGE_LIBRARY_NUMPY
+
 cdef class VideoStream:
 	cdef AVFormatContext *FormatCtx
 	cdef AVCodecContext *CodecCtx
@@ -297,8 +87,9 @@ cdef class VideoStream:
 	cdef object filename
 	cdef object index
 	cdef object keyframes
+	cdef int image_library
 	
-	def __new__(self):
+	def __new__(self, image_library = IMAGE_LIBRARY_PIL):
 		self.FormatCtx = NULL
 		self.frame = avcodec_alloc_frame()
 		self.frameno = 0
@@ -307,6 +98,7 @@ cdef class VideoStream:
 		self.filename = None
 		self.index = None
 		self.keyframes = None
+		self.SetImageLibrary(image_library)
 
 	def dump(self):
 		dump_format(self.FormatCtx,0,self.filename,0)
@@ -350,12 +142,27 @@ cdef class VideoStream:
 			raise IOError("Unable to open codec")
 		self.filename = filename
 		
-	cdef AVFrame *ConvertToRGBA(self,AVPicture *frame,AVCodecContext *pCodecCtx):
+	def SetImageLibrary(self,new_library):
+		if new_library == IMAGE_LIBRARY_PIL:
+			if not _HAS_PIL:
+				raise ValueError, "PIL format requested, but PIL not availble"
+		elif new_library == IMAGE_LIBRARY_CAIRO:
+			if not _HAS_CAIRO:
+				raise ValueError, "Cairo format requested, but pycairo not available"
+		elif new_library == IMAGE_LIBRARY_NUMPY:
+			if not _HAS_NUMPY:
+				raise ValueError, "Numpy format requested, but numpy not available"
+		else:
+			raise ValueError, "Unknown image format requested"
+		self.image_library = new_library
+		
+	cdef AVFrame *ConvertToRGBA(self,AVFrame *frame,AVCodecContext *pCodecCtx):
 		cdef AVFrame *pFrameRGBA
 		cdef int numBytes
-		cdef char *rgb_buffer
+		cdef unsigned char *rgb_buffer
 		cdef int width,height
-
+		cdef SwsContext *scale_context
+		
 		pFrameRGBA = avcodec_alloc_frame()
 		if pFrameRGBA == NULL:
 			raise MemoryError("Unable to allocate RGB Frame")
@@ -363,22 +170,27 @@ cdef class VideoStream:
 		width = pCodecCtx.width
 		height = pCodecCtx.height
 		# Determine required buffer size and allocate buffer
-		numBytes=avpicture_get_size(PIX_FMT_RGBA32, width,height)
+		numBytes = avpicture_get_size(PIX_FMT_RGB32, width, height)
+		
 		# Hrm, how do I figure out when to release the old one....
-		rgb_buffer = <char *>PyMem_Malloc(numBytes)
-		avpicture_fill(<AVPicture *>pFrameRGBA, rgb_buffer, PIX_FMT_RGBA32,
-				width, height)
+		rgb_buffer = <unsigned char *>PyMem_Malloc(numBytes)
+		avpicture_fill(<AVPicture *>pFrameRGBA, rgb_buffer, PIX_FMT_RGB32, width, height)
 
-		img_convert(<AVPicture *>pFrameRGBA, PIX_FMT_RGBA32,
-					<AVPicture *>frame, pCodecCtx.pix_fmt, width,
-					height)
+		scale_context = sws_getContext(pCodecCtx.width, pCodecCtx.height, pCodecCtx.pix_fmt, width,height,PIX_FMT_RGB32,SWS_BICUBIC,NULL,NULL,NULL)
+		if scale_context == NULL:
+			av_free(pFrameRGBA)
+			raise MemoryError, "Unable to allocate SwsContext"
+			
+		sws_scale(scale_context,<uint8_t**>frame.data,frame.linesize,0,pCodecCtx.height,<uint8_t **>pFrameRGBA.data,<int *>pFrameRGBA.linesize)
+		sws_freeContext(scale_context)
 		return pFrameRGBA
 
-	cdef AVFrame *ConvertToRGB24(self,AVPicture *frame,AVCodecContext *pCodecCtx):
+	cdef AVFrame *ConvertToRGB24(self,AVFrame *frame,AVCodecContext *pCodecCtx):
 		cdef AVFrame *pFrameRGB24
 		cdef int numBytes
-		cdef char *rgb_buffer
+		cdef unsigned char *rgb_buffer
 		cdef int width,height
+		cdef SwsContext *scale_context
 
 		pFrameRGB24 = avcodec_alloc_frame()
 		if pFrameRGB24 == NULL:
@@ -389,13 +201,17 @@ cdef class VideoStream:
 		# Determine required buffer size and allocate buffer
 		numBytes=avpicture_get_size(PIX_FMT_RGB24, width,height)
 		# Hrm, how do I figure out how to release the old one....
-		rgb_buffer = <char *>PyMem_Malloc(numBytes)
+		rgb_buffer = <unsigned char *>PyMem_Malloc(numBytes)
 		avpicture_fill(<AVPicture *>pFrameRGB24, rgb_buffer, PIX_FMT_RGB24,
 				width, height)
 
-		img_convert(<AVPicture *>pFrameRGB24, PIX_FMT_RGB24,
-					<AVPicture *>frame, pCodecCtx.pix_fmt, width,
-					height)
+		scale_context = sws_getContext(pCodecCtx.width, pCodecCtx.height, pCodecCtx.pix_fmt, width,height,PIX_FMT_RGB24,SWS_BICUBIC,NULL,NULL,NULL)
+		if scale_context == NULL:
+			av_free(pFrameRGB24)
+			raise MemoryError, "Unable to allocate SwsContext"
+			
+		sws_scale(scale_context,<uint8_t**>frame.data,frame.linesize,0,pCodecCtx.height,<uint8_t **>pFrameRGB24.data,<int *>pFrameRGB24.linesize)
+		sws_freeContext(scale_context)
 		return pFrameRGB24
 
 	def SaveFrame(self):
@@ -408,7 +224,7 @@ cdef class VideoStream:
 		height = self.CodecCtx.height
 
 		# I haven't figured out how to write RGBA data to an ppm file so I use a 24 bit version
-		pFrameRGB = self.ConvertToRGB24(<AVPicture *>self.frame,self.CodecCtx)
+		pFrameRGB = self.ConvertToRGB24(self.frame,self.CodecCtx)
 		filename = "frame%04d.ppm" % self.frameno
 		f = open(filename,"wb")
 
@@ -419,20 +235,87 @@ cdef class VideoStream:
 		f.close()
 		PyMem_Free(pFrameRGB.data[0])
 
-	def GetCurrentFrame(self):
+	def __GetCurrentFrame_numpy(self, int fmt = PIX_FMT_RGB24):
+		cdef AVFrame *pFrame
+		cdef unsigned int numBytes
+		cdef numpy.ndarray[numpy.uint8_t, ndim=3] arry
+		cdef int width,height
+		cdef SwsContext *scale_context
+		
+		width = self.CodecCtx.width
+		height = self.CodecCtx.height
+		
+		# FIXME: Support any format.
+		if fmt != PIX_FMT_RGB24:
+			raise ValueError, "Only PIX_FMT_RGB24 is supported right now."
+			
+		pFrame = avcodec_alloc_frame()
+		if pFrame == NULL:
+			raise MemoryError("Unable to allocate  AVFrame")
+			
+		# Determine required buffer size and allocate buffer
+		numBytes=avpicture_get_size(fmt, width, height)
+		
+		arry = numpy.empty((width,height,3), dtype = numpy.uint8)
+		
+		avpicture_fill(<AVPicture *>pFrame, <void*>arry.data, fmt, width, height)
+		
+		scale_context = sws_getContext(self.CodecCtx.width, self.CodecCtx.height, self.CodecCtx.pix_fmt, width, height, fmt, SWS_BICUBIC, NULL, NULL, NULL)
+		
+		if scale_context == NULL:
+			av_free(pFrame)
+			raise MemoryError, "Unable to allocate SwsContext"
+			
+		sws_scale(scale_context,<uint8_t**>self.frame.data,self.frame.linesize,0,height,<uint8_t **>pFrame.data,<int *>pFrame.linesize)
+		sws_freeContext(scale_context)
+		av_free(pFrame)
+		return arry
+		
+	def __GetCurrentFrame_cairo(self):
+		cdef AVFrame *pFrame
+		cdef object buf_obj
+		cdef int numBytes
+		cdef int width,height
+		
+		width = self.CodecCtx.width
+		height = self.CodecCtx.height
+		
+		pFrame = self.ConvertToRGBA(self.frame, self.CodecCtx)
+		
+		numBytes = avpicture_get_size(PIX_FMT_RGB32, width, height)
+		buf_obj = PyBuffer_FromReadWriteMemory(pFrame.data[0],numBytes)
+		
+		# While we requsted 32 bit data, the alpha data is all transparent when moved to cairo, so we
+		# tell cairo it's RGBX so the X is ignored. Cairo always uses 32 bits of data.
+		surface = cairo.ImageSurface.create_for_data(buf_obj,cairo.FORMAT_RGB24,width,height,pFrame.linesize[0])
+		
+		return surface
+		
+	def __GetCurrentFrame_PIL(self):
 		cdef AVFrame *pFrameRGB
 		cdef object buf_obj
 		cdef int numBytes
 
-		pFrameRGB = self.ConvertToRGBA(<AVPicture *>self.frame,self.CodecCtx)
-		numBytes=avpicture_get_size(PIX_FMT_RGBA32, self.CodecCtx.width, self.CodecCtx.height)
+		pFrameRGB = self.ConvertToRGB24(self.frame,self.CodecCtx)
+		numBytes=avpicture_get_size(PIX_FMT_RGB24, self.CodecCtx.width, self.CodecCtx.height)
 		buf_obj = PyBuffer_FromMemory(pFrameRGB.data[0],numBytes)
 
-		img_image = Image.frombuffer("RGBA",(self.CodecCtx.width,self.CodecCtx.height),buf_obj,"raw","BGRA",pFrameRGB.linesize[0],1)
+		img_image = Image.fromstring("RGB",(self.CodecCtx.width,self.CodecCtx.height),buf_obj,"raw","RGB",pFrameRGB.linesize[0],1)
 		PyMem_Free(pFrameRGB.data[0])
+		av_free(pFrameRGB)
 		return img_image
 		
 		
+	def GetCurrentFrame(self):
+		if self.image_library == IMAGE_LIBRARY_PIL:
+			return self.__GetCurrentFrame_PIL()
+		elif self.image_library == IMAGE_LIBRARY_CAIRO:
+			return self.__GetCurrentFrame_cairo()
+		elif self.image_library == IMAGE_LIBRARY_NUMPY:
+			return self.__GetCurrentFrame_numpy()
+		else:
+			raise ValueError, "Unknown iamge library"
+			
 	def __next_frame(self):
 		cdef int ret
 		cdef int frameFinished
@@ -446,7 +329,7 @@ cdef class VideoStream:
 				ret = av_read_frame(self.FormatCtx,&self.packet)
 				if ret < 0:
 					raise IOError("Unable to read frame: %d" % ret)
-			ret = avcodec_decode_video(self.CodecCtx,self.frame,&frameFinished,self.packet.data,self.packet.size)
+			ret = avcodec_decode_video(self.CodecCtx, self.frame, &frameFinished, self.packet.data, self.packet.size)
 			if ret < 0:
 				raise IOError("Unable to decode video picture: %d" % ret)
 
@@ -459,7 +342,7 @@ cdef class VideoStream:
 
 	def GetNextFrame(self):
 		self.__next_frame()
-		return self.GetCurrentFrame()                  
+		return self.GetCurrentFrame()		       
 
 	def build_index(self,fast = True):
 		if fast == True:
@@ -486,15 +369,15 @@ cdef class VideoStream:
 		if ret < 0:
 			raise IOError("Error rewinding stream for full indexing: %d" % ret)
 		avcodec_flush_buffers(self.CodecCtx)
-		
+		myPts = av_rescale(0,time_base,stream.time_base.den)
 		frame_no = 0
 		while True:
 			frameFinished = 0
 			while frameFinished == 0:
-				ret = av_read_frame(self.FormatCtx,&self.packet)
+				ret = av_read_frame(self.FormatCtx, &self.packet)
 				if ret < 0:
 					# check for eof condition
-					ret2 = url_feof(&self.FormatCtx.pb)
+					ret2 = url_feof(self.FormatCtx.pb)
 					if ret2 == 0:
 						raise IOError("Error reading frame for full indexing: %d" % ret)
 					else:
@@ -558,9 +441,9 @@ cdef class VideoStream:
 		self.CodecCtx.skip_idct = AVDISCARD_NONKEY
 		self.CodecCtx.skip_frame = AVDISCARD_NONKEY
 		while True:
-			ret = av_read_frame(self.FormatCtx,&self.packet)
+			ret = av_read_frame(self.FormatCtx, &self.packet)
 			if ret < 0:
-				ret2 = url_feof(&self.FormatCtx.pb)
+				ret2 = url_feof(self.FormatCtx.pb)
 				if  ret2 == 0:
 					raise IOError("Error reading frame for fast indexing: %d" % ret)
 				else:
