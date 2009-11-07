@@ -4,4 +4,4 @@ build
 testbed
 TODO_NP
 *.egg*
-examples/*png
+examples/*.png
