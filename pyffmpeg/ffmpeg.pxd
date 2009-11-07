@@ -16,6 +16,10 @@ cdef extern from "Python.h":
 cdef extern from "libavutil/mathematics.h":
 	int64_t av_rescale(int64_t a, int64_t b, int64_t c)
 	
+cdef extern from "libavutil/log.h":
+	int av_log_get_level()
+	void av_log_set_level(int)
+	
 cdef extern from "libavutil/avutil.h":
 	cdef enum PixelFormat:
 		PIX_FMT_NONE= -1,

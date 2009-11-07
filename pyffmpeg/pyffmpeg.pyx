@@ -103,10 +103,12 @@ cdef class VideoStream:
 	def dump(self):
 		dump_format(self.FormatCtx,0,self.filename,0)
 
-	def open(self,char *filename):
+	def open(self, char *filename, log_level=1):
 		cdef AVFormatContext *pFormatCtx
 		cdef int ret
 		cdef int i
+
+		av_log_set_level(log_level)
 
 		py_av_register_all()
 		ret = av_open_input_file(&self.FormatCtx,filename,NULL,0,NULL)
