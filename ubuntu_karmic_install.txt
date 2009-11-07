@@ -1,0 +1,1 @@
+sudo apt-get --reinstall install  libavcodec{52,-dev} libavutil{49,-dev} libavformat{52,-dev} libswscale{0,-dev}  -y
