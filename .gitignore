@@ -3,3 +3,5 @@ build
 *.avi
 testbed
 TODO_NP
+*.egg*
+examples/*png
