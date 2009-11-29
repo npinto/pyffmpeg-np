@@ -330,7 +330,7 @@ cdef class VideoStream:
 			while self.packet.stream_index != self.videoStream:
 				ret = av_read_frame(self.FormatCtx,&self.packet)
 				if ret < 0:
-					raise IOError("Unable to read frame: %d" % ret)
+					raise IOError("Unable to read frame: %d" % ret, 1)
 			ret = avcodec_decode_video(self.CodecCtx, self.frame, &frameFinished, self.packet.data, self.packet.size)
 			if ret < 0:
 				raise IOError("Unable to decode video picture: %d" % ret)

@@ -1,0 +1,10 @@
+packages to install:
+=python-dev
+=libavcodec-dev
+=libavutil-dev
+=libavformat-dev
+=libswscale-dev
+They are preceeded by an = to make them easy to extract. The following
+command should ensure that you have the packages you need.
+# sudo apt-get install $(sed -n -e 's/^=//p' INSTALL)
+
