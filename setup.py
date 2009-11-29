@@ -7,8 +7,8 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 from distutils.sysconfig import get_python_lib, get_python_inc
 
-libdir = os.path.join(get_python_lib(),"numpy","core","include")
-libdir64 = libdir.replace("/lib","/lib64")
+import numpy
+libdir = numpy.get_numpy_include()
 
 setup(
     name = "pyffmpeg",
@@ -23,7 +23,7 @@ setup(
                                 "/usr/include/libswscale",
                                 "/usr/include/ffmpeg",
                                 "pyffmpeg",
-                                libdir, libdir64,
+                                libdir,
                                 ],
                   libraries = ["avcodec",
                                "avutil",
