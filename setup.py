@@ -8,7 +8,7 @@ from Cython.Distutils import build_ext
 from distutils.sysconfig import get_python_lib, get_python_inc
 
 import numpy
-libdir = numpy.get_numpy_include()
+libdir = numpy.get_include()
 
 setup(
     name = "pyffmpeg",
