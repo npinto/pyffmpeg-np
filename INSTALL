@@ -1,4 +1,4 @@
-packages to install:
+empackages to install:
 =python-dev
 =libavcodec-dev
 =libavutil-dev
@@ -6,5 +6,5 @@ packages to install:
 =libswscale-dev
 They are preceeded by an = to make them easy to extract. The following
 command should ensure that you have the packages you need.
-# sudo apt-get install $(sed -n -e 's/^=//p' INSTALL)
+# sudo apt-get -y install $(sed -n -e 's/^=//p' INSTALL)
 
