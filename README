@@ -1,0 +1,10 @@
+
+
+On Ubuntu 9.04 / 9.10:
+----------------------
+
+sudo apt-get install libav{codec,format,util}-dev libswscale-dev
+
+python setup.py build
+
+sudo python setup.py install
