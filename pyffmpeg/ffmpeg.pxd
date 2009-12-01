@@ -13,14 +13,17 @@ cdef extern from "Python.h":
 	void* PyMem_Malloc( size_t n)
 	void PyMem_Free( void *p)
 
-cdef extern from "libavutil/mathematics.h":
+#cdef extern from "libavutil/mathematics.h":
+cdef extern from "mathematics.h":
 	int64_t av_rescale(int64_t a, int64_t b, int64_t c)
 	
-cdef extern from "libavutil/log.h":
+#cdef extern from "libavutil/log.h":
+cdef extern from "log.h":
 	int av_log_get_level()
 	void av_log_set_level(int)
 	
-cdef extern from "libavutil/avutil.h":
+#cdef extern from "libavutil/avutil.h":
+cdef extern from "avutil.h":
 	cdef enum PixelFormat:
 		PIX_FMT_NONE= -1,
 		PIX_FMT_YUV420P,   #< Planar YUV 4:2:0, 12bpp, (1 Cr & Cb sample per 2x2 Y samples)
@@ -67,7 +70,8 @@ cdef extern from "libavutil/avutil.h":
 		PIX_FMT_YUVA420P,  #< Planar YUV 4:2:0, 20bpp, (1 Cr & Cb sample per 2x2 Y & A samples)
 		PIX_FMT_NB,        #< number of pixel formats, DO NOT USE THIS if you want to link with shared libav* because the number of formats might differ between versions
 
-cdef extern from "libavcodec/avcodec.h":
+#cdef extern from "libavcodec/avcodec.h":
+cdef extern from "avcodec.h":
 	# use an unamed enum for defines
 	cdef enum:
 		AVSEEK_FLAG_BACKWARD = 1 #< seek backward
@@ -167,7 +171,8 @@ cdef extern from "libavcodec/avcodec.h":
 
 
 
-cdef extern from "libavformat/avformat.h":
+#cdef extern from "libavformat/avformat.h":
+cdef extern from "avformat.h":
 	struct AVFrac:
 		int64_t val, num, den
 
@@ -275,12 +280,14 @@ cdef extern from "libavformat/avformat.h":
 	int av_index_search_timestamp(AVStream *st, int64_t timestamp, int flags)
 
 
-cdef extern from "libavformat/avio.h":
+#cdef extern from "libavformat/avio.h":
+cdef extern from "avio.h":
 	int url_ferror(ByteIOContext *s)
 	int url_feof(ByteIOContext *s)
 	
 # use the new swscale interface
-cdef extern from "libswscale/swscale.h":
+#cdef extern from "libswscale/swscale.h":
+cdef extern from "swscale.h":
 	cdef enum:
 		LIBSWSCALE_VERSION_INT
 		
