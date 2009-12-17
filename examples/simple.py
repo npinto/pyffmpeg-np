@@ -1,13 +1,18 @@
 import pyffmpeg
 import Image
 
+import os
+mypath = os.path.dirname(os.path.realpath(__file__)) + '/'
+
+video_fname = os.path.join(mypath, 'myvideo.flv')
+
 stream = pyffmpeg.VideoStream()
-stream.open('myvideo.flv')
+stream.open(video_fname)
 # Get the first frame as a PIL image
 image = stream.GetFrameNo(0)
 print "Retrivied frame number 0 from the video stream as PIL Image"
 # Save it to a PNG file
-image.save('firstframe.png')
+image.save(os.path.join(mypath, 'firstframe.png'))
 print "Saved to firstframe.png."
 
 # Change the frame format to numpy.
@@ -26,7 +31,7 @@ print "It takes %d bytes of memory" % nimage.nbytes
 # Convert the numpy array into a PIL image.
 image = Image.frombuffer("RGB",nimage.shape[0:2],nimage.data,"raw","RGB",nimage.shape[0] * nimage.shape[2],1)
 # Save it to a PNG file as well
-image.save('numpy_frame.png')
+image.save(os.path.join(mypath, 'numpy_frame.png'))
 print "Wrote numpy frame to numpy_frame.png by converting to PIL image"
 
 # And now a cairo image surface
@@ -35,7 +40,7 @@ stream.SetImageLibrary(pyffmpeg.image_library_cairo)
 surf = stream.GetFrameNo(128)
 print
 print "Got cairo surface with type %s" % type(surf)
-surf.write_to_png("cairo_frame.png")
+surf.write_to_png(os.path.join(mypath, "cairo_frame.png"))
 print "Wrote to file cairo_frame.png using write_to_png()"
 
 print
